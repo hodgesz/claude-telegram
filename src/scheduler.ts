@@ -1,9 +1,15 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 import cron from "node-cron";
 import { query } from "@anthropic-ai/claude-code";
 import { DATA_DIR, ensureDataDir } from "./config.js";
 import { logStatus, logError } from "./log.js";
+
+let claudeExecutablePath: string | undefined;
+try {
+  claudeExecutablePath = execSync("which claude", { encoding: "utf-8" }).trim();
+} catch {}
 
 export interface Schedule {
   id: string;
@@ -180,6 +186,9 @@ Rules:
         model: "claude-haiku-4-5-20251001",
         maxTurns: 1,
         permissionMode: "bypassPermissions",
+        ...(claudeExecutablePath
+          ? { pathToClaudeCodeExecutable: claudeExecutablePath }
+          : {}),
       },
     });
 

@@ -46,9 +46,9 @@ const WORKER_COMMANDS = [
 ];
 
 const AVAILABLE_MODELS = [
-  { id: "claude-sonnet-4-20250514", label: "Sonnet 4" },
-  { id: "claude-opus-4-20250514", label: "Opus 4" },
-  { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
+  { id: "", label: "Default (from settings)" },
+  { id: "global.anthropic.claude-opus-4-6-v1", label: "Opus 4.6" },
+  { id: "global.anthropic.claude-sonnet-4-6", label: "Sonnet 4.6" },
 ];
 
 export function createWorker(
@@ -345,7 +345,12 @@ export function createWorker(
     // Model selection
     if (data.startsWith("model:")) {
       const modelId = data.slice(6);
-      bridge.setModel(ctx.chat!.id, modelId);
+      if (modelId === "") {
+        // Reset to default (from settings.json)
+        bridge.clearModel(ctx.chat!.id);
+      } else {
+        bridge.setModel(ctx.chat!.id, modelId);
+      }
       const label =
         AVAILABLE_MODELS.find((m) => m.id === modelId)?.label ?? modelId;
       await ctx.editMessageText(`Model set to <b>${label}</b>. Session cleared.`, {
@@ -827,7 +832,7 @@ export function createWorker(
               .catch(() => {});
           },
         },
-        bridge.isYolo(chatId) ? "bypassPermissions" : "default"
+        "bypassPermissions"
       );
     } finally {
       if (typingInterval) clearInterval(typingInterval);

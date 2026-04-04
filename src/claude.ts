@@ -1,9 +1,18 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { execSync } from "node:child_process";
 import { query, type SDKMessage, type SDKResultMessage, type PermissionMode, type PermissionResult, type ModelUsage } from "@anthropic-ai/claude-code";
 import { DATA_DIR, config } from "./config.js";
 import { logStatus, logError, logResult } from "./log.js";
+
+// Resolve claude executable path at module load
+let claudeExecutablePath: string | undefined;
+try {
+  claudeExecutablePath = execSync("which claude", { encoding: "utf-8" }).trim();
+} catch {
+  // Will let the SDK try to find it
+}
 
 export interface TokenUsage {
   inputTokens: number;
@@ -152,13 +161,19 @@ export class ClaudeBridge {
     return this.processing.has(chatId);
   }
 
-  getModel(chatId: number): string {
-    return this.selectedModels.get(chatId) ?? "claude-sonnet-4-20250514";
+  getModel(chatId: number): string | undefined {
+    return this.selectedModels.get(chatId);
   }
 
   setModel(chatId: number, model: string): void {
     this.selectedModels.set(chatId, model);
     // Clear session when changing model
+    this.clearSession(chatId);
+    this.saveState();
+  }
+
+  clearModel(chatId: number): void {
+    this.selectedModels.delete(chatId);
     this.clearSession(chatId);
     this.saveState();
   }
@@ -241,7 +256,7 @@ export class ClaudeBridge {
     chatId: number,
     prompt: string,
     callbacks: SendMessageCallbacks,
-    permissionMode: PermissionMode = "default",
+    permissionMode: PermissionMode = "bypassPermissions",
     maxTurns?: number
   ): Promise<void> {
     // Enforce 2s cooldown between queries
@@ -314,18 +329,22 @@ export class ClaudeBridge {
     let streamBuffer = "";
 
     try {
+      const selectedModel = this.getModel(chatId);
       const q = query({
         prompt,
         options: {
           env: this.cleanEnv,
           cwd: this.workingDir,
-          model: this.getModel(chatId),
+          ...(selectedModel ? { model: selectedModel } : {}),
           includePartialMessages: true,
           permissionMode: mode,
           maxTurns,
           resume: sessionId,
           abortController,
           canUseTool,
+          ...(claudeExecutablePath
+            ? { pathToClaudeCodeExecutable: claudeExecutablePath }
+            : {}),
         },
       });
 

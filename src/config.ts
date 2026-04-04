@@ -25,14 +25,16 @@ function loadConfigFile(): Record<string, string> {
 function resolveConfig(): Config {
   const file = loadConfigFile();
 
+  // Config file takes priority over env vars (env may have stale values
+  // from shell profile that conflict with the setup wizard's choices)
   const token =
-    process.env.TELEGRAM_BOT_TOKEN ?? file.TELEGRAM_BOT_TOKEN ?? "";
+    file.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN ?? "";
   const ownerId =
-    process.env.TELEGRAM_OWNER_ID ?? file.TELEGRAM_OWNER_ID ?? "";
+    file.TELEGRAM_OWNER_ID ?? process.env.TELEGRAM_OWNER_ID ?? "";
   const ngrokToken =
-    process.env.NGROK_AUTH_TOKEN ?? file.NGROK_AUTH_TOKEN ?? undefined;
+    file.NGROK_AUTH_TOKEN ?? process.env.NGROK_AUTH_TOKEN ?? undefined;
   const anthropicKey =
-    process.env.ANTHROPIC_API_KEY ?? file.ANTHROPIC_API_KEY ?? undefined;
+    file.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY ?? undefined;
 
   if (!token) {
     console.error(

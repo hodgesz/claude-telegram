@@ -291,9 +291,32 @@ async function main(): Promise<void> {
 
   // Step 9: Start manager bot polling
   logStatus("Starting manager bot polling...");
+  await startManagerPolling(managerBot);
+}
+
+async function startManagerPolling(managerBot: any): Promise<void> {
+  // Set up error boundary for middleware errors
+  managerBot.catch((err: any) => {
+    logError(`Manager bot middleware error: ${err.message ?? err}`);
+  });
+
+  // Handle unhandled rejections from the polling loop
+  process.on("unhandledRejection", (err: any) => {
+    const is409 = String(err).includes("409");
+    if (is409) {
+      logError("Manager bot 409 conflict — will recover automatically.");
+    } else {
+      logError(`Unhandled rejection: ${err}`);
+    }
+  });
+
+  // bot.start() handles init + polling in one call.
+  // It returns a promise that runs the polling loop.
+  // drop_pending_updates avoids processing stale messages.
   managerBot.start({
+    drop_pending_updates: true,
     onStart: () => {
-      logStatus("Manager bot ready. Send /help in Telegram.");
+      logStatus(`Manager bot ready (@${managerBot.botInfo.username}). Send /help in Telegram.`);
     },
   });
 }
