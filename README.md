@@ -96,6 +96,11 @@ Sessions are stored as JSONL transcript files in `~/.claude/projects/{project-pa
 2. Send `/session` → get the session ID
 3. In terminal: `claude --resume <session-id>` → full Telegram conversation history is loaded
 
+To skip tool approval prompts when resuming in the terminal, add `--dangerously-skip-permissions`:
+```
+claude --resume <session-id> --dangerously-skip-permissions
+```
+
 **Full round-trip:**
 ```
 Terminal → /resume in Telegram → more work → /session → claude --resume in terminal

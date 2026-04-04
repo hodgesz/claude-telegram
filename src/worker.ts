@@ -153,6 +153,9 @@ export function createWorker(
         "",
         `To resume in CLI:`,
         `<code>claude --resume ${sessionId}</code>`,
+        "",
+        `To resume and skip permissions:`,
+        `<code>claude --resume ${sessionId} --dangerously-skip-permissions</code>`,
       ].join("\n"),
       { parse_mode: "HTML" }
     );

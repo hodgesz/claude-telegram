@@ -345,6 +345,9 @@ export class ClaudeBridge {
           ...(claudeExecutablePath
             ? { pathToClaudeCodeExecutable: claudeExecutablePath }
             : {}),
+          stderr: (data: string) => {
+            logError(`Claude stderr: ${data.trim()}`, this.botUsername);
+          },
         },
       });
 
@@ -483,7 +486,7 @@ export class ClaudeBridge {
     mtime: Date;
     firstMessage?: string;
   }> {
-    const escapedDir = this.workingDir.replace(/\//g, "-").replace(/^-/, "");
+    const escapedDir = this.workingDir.replace(/\//g, "-");
     const sessionsDir = path.join(
       os.homedir(),
       ".claude",
