@@ -56,6 +56,7 @@ Open the **Worker Bot** you just created and send it any message:
 | `/new` | Start a fresh conversation |
 | `/model` | Switch between Opus, Sonnet, Haiku |
 | `/cost` | Show token usage and cost for this session |
+| `/status` | Check if a terminal session is active or idle |
 | `/session` | Get the session ID (for resuming in CLI) |
 | `/resume` | Resume a CLI session in Telegram |
 | `/cancel` | Stop the current operation |
@@ -108,6 +109,32 @@ Terminal → /resume in Telegram → more work → /session → claude --resume 
 Each hop reads the latest transcript state. As long as you finish or idle one side before resuming on the other, it's a clean handoff.
 
 **Important:** If both sides are actively running at the same time, they fork — edits diverge and you may get file conflicts since both processes write to the same project directory. To avoid this, `/cancel` or finish the active session before resuming on the other side.
+
+### Long-Running Tasks on the Go
+
+If you're kicking off a task that might take a while (big refactors, migrations, test suites), **start it from Telegram instead of the terminal**. This gives you full remote control:
+
+- Permission prompts arrive as tap-to-approve buttons on your phone
+- You can respond to questions or provide input from anywhere
+- Streaming updates show you what Claude is doing in real time
+- `/cancel` stops it remotely if something goes wrong
+
+A running terminal session can't be controlled from Telegram — the terminal process owns stdin/stdout exclusively. Use `/status` to check if a terminal session is still running or has finished, and `/resume` to pick it up once it's idle.
+
+**Recommended workflow for long tasks:**
+```
+1. Open Telegram worker bot
+2. Send the task: "refactor the auth module to use JWT"
+3. Walk away — approve tools from your phone as needed
+4. When done, /session gives you the ID to continue in terminal later
+```
+
+### Monitoring Terminal Sessions
+
+Use `/status` to check on the most recent session for this project:
+- 🟢 **Active** — Claude is still working in the terminal. Don't resume yet.
+- 🟡 **Just finished** — activity within the last 30 seconds. Safe to resume shortly.
+- 💤 **Idle** — done. Safe to `/resume` from Telegram.
 
 ### Tool Approval
 When Claude wants to run a command or edit a file, you'll get an inline keyboard:

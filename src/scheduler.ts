@@ -6,9 +6,15 @@ import { query } from "@anthropic-ai/claude-code";
 import { DATA_DIR, ensureDataDir } from "./config.js";
 import { logStatus, logError } from "./log.js";
 
+// Prefer global install over local node_modules
 let claudeExecutablePath: string | undefined;
 try {
-  claudeExecutablePath = execSync("which claude", { encoding: "utf-8" }).trim();
+  const allPaths = execSync("which -a claude", { encoding: "utf-8" })
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  claudeExecutablePath =
+    allPaths.find((p) => !p.includes("node_modules")) ?? allPaths[0];
 } catch {}
 
 export interface Schedule {

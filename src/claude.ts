@@ -7,9 +7,15 @@ import { DATA_DIR, config } from "./config.js";
 import { logStatus, logError, logResult } from "./log.js";
 
 // Resolve claude executable path at module load
+// Prefer global install over local node_modules (local cli.js can crash on resume)
 let claudeExecutablePath: string | undefined;
 try {
-  claudeExecutablePath = execSync("which claude", { encoding: "utf-8" }).trim();
+  const allPaths = execSync("which -a claude", { encoding: "utf-8" })
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  claudeExecutablePath =
+    allPaths.find((p) => !p.includes("node_modules")) ?? allPaths[0];
 } catch {
   // Will let the SDK try to find it
 }
@@ -445,7 +451,7 @@ export class ClaudeBridge {
             });
 
             logResult(
-              `${result.num_turns} turns, ${usage.inputTokens + usage.outputTokens} tokens, $${usage.costUSD.toFixed(4)}`,
+              `${result.num_turns} turns, ${usage.inputTokens} in / ${usage.outputTokens} out, $${usage.costUSD.toFixed(4)}`,
               this.botUsername
             );
           } else {
@@ -548,6 +554,87 @@ export class ClaudeBridge {
       });
     } catch {
       return [];
+    }
+  }
+
+  getSessionStatus(sessionId?: string): {
+    active: boolean;
+    processRunning: boolean;
+    lastActivity?: Date;
+    sessionId?: string;
+  } {
+    // Use the most recently modified session for this project if none specified
+    const sid = sessionId ?? this.getMostRecentSessionId();
+    if (!sid) {
+      return { active: false, processRunning: false };
+    }
+
+    // Check if a claude CLI process is running with this session ID
+    let processRunning = false;
+    try {
+      // Use pgrep-style check: look for 'claude' processes that reference this session
+      const ps = execSync(
+        `ps aux | grep -E 'claude.*(--resume|${sid})' | grep -v grep`,
+        { encoding: "utf-8" }
+      ).trim();
+      processRunning = ps.length > 0 && ps.includes(sid);
+    } catch {
+      // grep returns exit code 1 when no matches — that means not running
+    }
+
+    // Check the session file's mtime for last write activity
+    const escapedDir = this.workingDir.replace(/\//g, "-");
+    const sessionFile = path.join(
+      os.homedir(),
+      ".claude",
+      "projects",
+      escapedDir,
+      `${sid}.jsonl`
+    );
+
+    let lastActivity: Date | undefined;
+    try {
+      const stat = fs.statSync(sessionFile);
+      lastActivity = stat.mtime;
+    } catch {
+      // File doesn't exist
+    }
+
+    const recentlyActive = lastActivity
+      ? Date.now() - lastActivity.getTime() < 30_000
+      : false;
+
+    return {
+      active: processRunning || recentlyActive,
+      processRunning,
+      lastActivity,
+      sessionId: sid,
+    };
+  }
+
+  // Find the most recently modified session file for this project
+  private getMostRecentSessionId(): string | undefined {
+    const escapedDir = this.workingDir.replace(/\//g, "-");
+    const sessionsDir = path.join(
+      os.homedir(),
+      ".claude",
+      "projects",
+      escapedDir
+    );
+
+    try {
+      const files = fs
+        .readdirSync(sessionsDir)
+        .filter((f) => f.endsWith(".jsonl"))
+        .map((f) => ({
+          sessionId: f.replace(".jsonl", ""),
+          mtime: fs.statSync(path.join(sessionsDir, f)).mtime,
+        }))
+        .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+      return files[0]?.sessionId;
+    } catch {
+      return undefined;
     }
   }
 }

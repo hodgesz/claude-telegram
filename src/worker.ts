@@ -33,6 +33,7 @@ const WORKER_COMMANDS = [
   { command: "new", description: "Start a fresh session" },
   { command: "model", description: "Switch Claude model" },
   { command: "cost", description: "Show token usage" },
+  { command: "status", description: "Check if CLI session is active or idle" },
   { command: "session", description: "Get session ID for CLI handoff" },
   { command: "resume", description: "Resume a CLI session" },
   { command: "cancel", description: "Cancel current operation" },
@@ -159,6 +160,63 @@ export function createWorker(
       ].join("\n"),
       { parse_mode: "HTML" }
     );
+  });
+
+  bot.command("status", async (ctx) => {
+    // Check the most recent session for this project, not just the Telegram one
+    const status = bridge.getSessionStatus();
+
+    if (!status.sessionId) {
+      await ctx.reply("No sessions found for this project.");
+      return;
+    }
+
+    const lines: string[] = [
+      `<b>Session:</b> <code>${status.sessionId.slice(0, 8)}...</code>`,
+    ];
+
+    if (status.processRunning) {
+      lines.push(
+        "",
+        "🟢 <b>Active</b> — Claude is still working in the terminal.",
+        "Wait for it to finish before resuming here."
+      );
+    } else if (status.lastActivity && status.active) {
+      const secsAgo = Math.round(
+        (Date.now() - status.lastActivity.getTime()) / 1000
+      );
+      lines.push(
+        "",
+        `🟡 <b>Just finished</b> — last activity ${secsAgo}s ago.`,
+        "Should be safe to resume shortly."
+      );
+    } else if (status.lastActivity) {
+      const minsAgo = Math.round(
+        (Date.now() - status.lastActivity.getTime()) / 60_000
+      );
+      const timeStr =
+        minsAgo < 60
+          ? `${minsAgo}m ago`
+          : `${Math.round(minsAgo / 60)}h ago`;
+      lines.push(
+        "",
+        `💤 <b>Idle</b> — last activity ${timeStr}.`,
+        "Safe to resume here."
+      );
+      lines.push(
+        "",
+        `<code>/resume ${status.sessionId}</code>`
+      );
+    } else {
+      lines.push("", "⚪ <b>Unknown</b> — session file not found.");
+    }
+
+    // Also note if Telegram bot is currently processing
+    if (bridge.isProcessing(ctx.chat.id)) {
+      lines.push("", "⚙️ Telegram bot is currently processing a request.");
+    }
+
+    await ctx.reply(lines.join("\n"), { parse_mode: "HTML" });
   });
 
   bot.command("resume", async (ctx) => {
@@ -793,7 +851,7 @@ export function createWorker(
             // Send summary footer
             const summary = [
               `📊 ${result.numTurns} turns`,
-              `${(result.usage.inputTokens + result.usage.outputTokens).toLocaleString()} tokens`,
+              `${result.usage.inputTokens.toLocaleString()} in / ${result.usage.outputTokens.toLocaleString()} out`,
               `$${result.costUSD.toFixed(4)}`,
               `${(result.durationMs / 1000).toFixed(1)}s`,
             ].join(" · ");
