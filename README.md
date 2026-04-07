@@ -189,5 +189,5 @@ The daemon is a single Node.js process that runs all bots via long polling (no p
 ## Requirements
 
 - Node.js 18+
-- A Claude Code subscription from Anthropic (Pro or Max)
+- Claude Code with a valid API key (Anthropic direct, AWS Bedrock, or Google Vertex)
 - Telegram account
