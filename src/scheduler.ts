@@ -15,7 +15,9 @@ try {
     .filter(Boolean);
   claudeExecutablePath =
     allPaths.find((p) => !p.includes("node_modules")) ?? allPaths[0];
-} catch {}
+} catch {
+  // `which` failed — leave claudeExecutablePath undefined
+}
 
 export interface Schedule {
   id: string;

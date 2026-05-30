@@ -35,11 +35,14 @@ export function claudeToTelegram(markdown: string): string {
 
   // Phase 2: Extract block elements
   // Headings
-  text = text.replace(/^(#{1,6})\s+(.+)$/gm, (_match, _hashes, content: string) => {
-    const ph = nextPlaceholder();
-    stash.set(ph, `<b>${content.trim()}</b>`);
-    return ph;
-  });
+  text = text.replace(
+    /^(#{1,6})\s+(.+)$/gm,
+    (_match, _hashes, content: string) => {
+      const ph = nextPlaceholder();
+      stash.set(ph, `<b>${content.trim()}</b>`);
+      return ph;
+    }
+  );
 
   // Blockquotes
   text = text.replace(/^>\s+(.+)$/gm, (_match, content: string) => {
@@ -56,7 +59,9 @@ export function claudeToTelegram(markdown: string): string {
   });
 
   // Phase 4: Escape remaining HTML and apply inline formatting
-  // Split on placeholders to only escape non-placeholder text
+  // Split on placeholders to only escape non-placeholder text.
+  // The \x00 sentinels are intentional placeholder delimiters.
+  // eslint-disable-next-line no-control-regex
   const parts = text.split(/((?:\x00PH\d+\x00))/);
   text = parts
     .map((part) => {
@@ -144,7 +149,10 @@ export function splitMessage(text: string, limit = 4096): string[] {
     }
 
     // Close open tags at end of chunk
-    const closingTags = [...openTags].reverse().map((t) => `</${t}>`).join("");
+    const closingTags = [...openTags]
+      .reverse()
+      .map((t) => `</${t}>`)
+      .join("");
     chunk += closingTags;
 
     // Reopen tags at start of next chunk

@@ -2,7 +2,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { execSync } from "node:child_process";
-import { query, type SDKMessage, type SDKResultMessage, type PermissionMode, type PermissionResult, type ModelUsage } from "@anthropic-ai/claude-code";
+import {
+  query,
+  type SDKMessage,
+  type SDKResultMessage,
+  type PermissionMode,
+  type PermissionResult,
+} from "@anthropic-ai/claude-code";
 import { DATA_DIR, config } from "./config.js";
 import { logStatus, logError, logResult } from "./log.js";
 
@@ -281,15 +287,10 @@ export class ClaudeBridge {
       ? ("bypassPermissions" as PermissionMode)
       : permissionMode;
 
-    // Pending approval resolvers
-    let pendingToolApproval:
-      | { resolve: (result: PermissionResult) => void }
-      | undefined;
-
     const canUseTool = async (
       toolName: string,
       input: Record<string, unknown>,
-      options: { signal: AbortSignal; suggestions?: any[] }
+      _options: { signal: AbortSignal; suggestions?: any[] }
     ): Promise<PermissionResult> => {
       // Auto-approve safe tools
       if (AUTO_APPROVE_TOOLS.has(toolName)) {
@@ -305,10 +306,7 @@ export class ClaudeBridge {
       // Ask user via Telegram inline keyboard
       if (callbacks.onToolApproval) {
         return new Promise<PermissionResult>((resolve) => {
-          pendingToolApproval = { resolve };
           callbacks.onToolApproval!(toolName, input, (result) => {
-            pendingToolApproval = undefined;
-
             // If "Always Allow", add to session approved set
             if (
               result.behavior === "allow" &&
@@ -533,9 +531,7 @@ export class ClaudeBridge {
                 if (typeof content === "string") {
                   firstMessage = content.slice(0, 100);
                 } else if (Array.isArray(content)) {
-                  const textBlock = content.find(
-                    (b: any) => b.type === "text"
-                  );
+                  const textBlock = content.find((b: any) => b.type === "text");
                   if (textBlock) {
                     firstMessage = textBlock.text.slice(0, 100);
                   }

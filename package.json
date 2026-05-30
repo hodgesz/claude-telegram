@@ -9,11 +9,17 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --passWithNoTests"
   },
   "engines": {
     "node": ">=18"
   },
+  "license": "Apache-2.0",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
     "dotenv": "^16.4.7",
@@ -24,9 +30,14 @@
     "@ngrok/ngrok": "^1.4.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.3",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^3.2.4"
   }
 }

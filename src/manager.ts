@@ -66,7 +66,9 @@ export function createManager(
 
     if (workers.size > 0) {
       for (const [, w] of workers) {
-        lines.push(`• @${w.config.username} — <code>${w.config.workingDir}</code>`);
+        lines.push(
+          `• @${w.config.username} — <code>${w.config.workingDir}</code>`
+        );
       }
     }
 
@@ -152,9 +154,7 @@ export function createManager(
     const worker = workers.get(targetId);
     try {
       await callbacks.stopWorker(targetId);
-      await ctx.reply(
-        `Removed @${worker?.config.username ?? targetId}`
-      );
+      await ctx.reply(`Removed @${worker?.config.username ?? targetId}`);
     } catch (err: any) {
       await ctx.reply(`Error removing bot: ${err.message}`);
     }
@@ -178,9 +178,7 @@ export function createManager(
     const lines = ["<b>All Scheduled Tasks</b>", ""];
     for (const [botId, scheds] of grouped) {
       const worker = workers.get(botId);
-      const label = worker
-        ? `@${worker.config.username}`
-        : `Bot ${botId}`;
+      const label = worker ? `@${worker.config.username}` : `Bot ${botId}`;
       lines.push(`<b>${label}</b>`);
       for (const s of scheds) {
         lines.push(
