@@ -1,9 +1,9 @@
-import { Bot, InlineKeyboard, type Context } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { config } from "./config.js";
 import type { BotConfig } from "./store.js";
-import { ClaudeBridge, type TokenUsage } from "./claude.js";
+import { ClaudeBridge } from "./claude.js";
 import { TunnelManager, parsePort } from "./tunnel.js";
 import {
   ScheduleManager,
@@ -11,12 +11,8 @@ import {
   parseScheduleWithClaude,
   type Schedule,
 } from "./scheduler.js";
-import {
-  claudeToTelegram,
-  splitMessage,
-  formatToolCall,
-} from "./formatter.js";
-import { logUser, logStatus, logError, logTool, logApproval } from "./log.js";
+import { claudeToTelegram, splitMessage, formatToolCall } from "./formatter.js";
+import { logUser, logApproval } from "./log.js";
 import type { PermissionResult } from "@anthropic-ai/claude-code";
 
 interface QueuedMessage {
@@ -67,7 +63,11 @@ export function createWorker(
   // Pending approval/answer maps
   const pendingApprovals = new Map<
     string,
-    { resolve: (result: PermissionResult) => void; timer: ReturnType<typeof setTimeout>; description: string }
+    {
+      resolve: (result: PermissionResult) => void;
+      timer: ReturnType<typeof setTimeout>;
+      description: string;
+    }
   >();
   const pendingAnswers = new Map<
     string,
@@ -75,7 +75,10 @@ export function createWorker(
   >();
   const pendingScheduleConfirm = new Map<
     number,
-    { schedule: Omit<Schedule, "id" | "createdAt" | "lastRunAt">; timer: ReturnType<typeof setTimeout> }
+    {
+      schedule: Omit<Schedule, "id" | "createdAt" | "lastRunAt">;
+      timer: ReturnType<typeof setTimeout>;
+    }
   >();
 
   // Owner-only auth middleware
@@ -113,10 +116,7 @@ export function createWorker(
     for (const model of AVAILABLE_MODELS) {
       const isCurrent = current === model.id;
       keyboard
-        .text(
-          `${isCurrent ? "✓ " : ""}${model.label}`,
-          `model:${model.id}`
-        )
+        .text(`${isCurrent ? "✓ " : ""}${model.label}`, `model:${model.id}`)
         .row();
     }
     await ctx.reply("Select a model:", {
@@ -195,18 +195,13 @@ export function createWorker(
         (Date.now() - status.lastActivity.getTime()) / 60_000
       );
       const timeStr =
-        minsAgo < 60
-          ? `${minsAgo}m ago`
-          : `${Math.round(minsAgo / 60)}h ago`;
+        minsAgo < 60 ? `${minsAgo}m ago` : `${Math.round(minsAgo / 60)}h ago`;
       lines.push(
         "",
         `💤 <b>Idle</b> — last activity ${timeStr}.`,
         "Safe to resume here."
       );
-      lines.push(
-        "",
-        `<code>/resume ${status.sessionId}</code>`
-      );
+      lines.push("", `<code>/resume ${status.sessionId}</code>`);
     } else {
       lines.push("", "⚪ <b>Unknown</b> — session file not found.");
     }
@@ -264,9 +259,7 @@ export function createWorker(
   bot.command("preview", async (ctx) => {
     const args = ctx.match?.trim();
     if (!args) {
-      await ctx.reply(
-        "Usage: /preview <port>\nExample: /preview 3000"
-      );
+      await ctx.reply("Usage: /preview <port>\nExample: /preview 3000");
       return;
     }
 
@@ -414,9 +407,12 @@ export function createWorker(
       }
       const label =
         AVAILABLE_MODELS.find((m) => m.id === modelId)?.label ?? modelId;
-      await ctx.editMessageText(`Model set to <b>${label}</b>. Session cleared.`, {
-        parse_mode: "HTML",
-      });
+      await ctx.editMessageText(
+        `Model set to <b>${label}</b>. Session cleared.`,
+        {
+          parse_mode: "HTML",
+        }
+      );
       await ctx.answerCallbackQuery();
       return;
     }
@@ -441,10 +437,9 @@ export function createWorker(
         clearTimeout(pending.timer);
         pendingApprovals.delete(approvalId);
         pending.resolve({ behavior: "allow", updatedInput: {} });
-        await ctx.editMessageText(
-          `✓ Approved: ${pending.description}`,
-          { parse_mode: "HTML" }
-        );
+        await ctx.editMessageText(`✓ Approved: ${pending.description}`, {
+          parse_mode: "HTML",
+        });
       }
       await ctx.answerCallbackQuery();
       return;
@@ -468,10 +463,9 @@ export function createWorker(
             },
           ],
         });
-        await ctx.editMessageText(
-          `✓ Always allowed: ${pending.description}`,
-          { parse_mode: "HTML" }
-        );
+        await ctx.editMessageText(`✓ Always allowed: ${pending.description}`, {
+          parse_mode: "HTML",
+        });
       }
       await ctx.answerCallbackQuery();
       return;
@@ -484,10 +478,9 @@ export function createWorker(
         clearTimeout(pending.timer);
         pendingApprovals.delete(approvalId);
         pending.resolve({ behavior: "deny", message: "User denied" });
-        await ctx.editMessageText(
-          `✗ Denied: ${pending.description}`,
-          { parse_mode: "HTML" }
-        );
+        await ctx.editMessageText(`✗ Denied: ${pending.description}`, {
+          parse_mode: "HTML",
+        });
       }
       await ctx.answerCallbackQuery();
       return;
@@ -641,10 +634,7 @@ export function createWorker(
       }
 
       const buffer = Buffer.from(await response.arrayBuffer());
-      const localPath = path.join(
-        bridge.getTempDir(),
-        `${Date.now()}.jpg`
-      );
+      const localPath = path.join(bridge.getTempDir(), `${Date.now()}.jpg`);
       fs.writeFileSync(localPath, buffer);
 
       const caption = ctx.message.caption ?? "";
@@ -699,8 +689,7 @@ export function createWorker(
     }
 
     // Start typing indicator
-    let typingInterval: ReturnType<typeof setInterval> | undefined;
-    typingInterval = setInterval(() => {
+    const typingInterval: ReturnType<typeof setInterval> = setInterval(() => {
       bot.api.sendChatAction(chatId, "typing").catch(() => {});
     }, TYPING_INTERVAL_MS);
 
@@ -779,7 +768,7 @@ export function createWorker(
                 `<b>Tool Approval Required</b>\n\n${toolDisplay}`,
                 { parse_mode: "HTML", reply_markup: keyboard }
               )
-              .then((msg) => {
+              .then(() => {
                 // New message for approval, don't use draft
                 draftMsgId = undefined;
               })
@@ -793,9 +782,7 @@ export function createWorker(
 
             const keyboard = new InlineKeyboard();
             for (const opt of options) {
-              keyboard
-                .text(opt.label, `answer:${answerId}:${opt.label}`)
-                .row();
+              keyboard.text(opt.label, `answer:${answerId}:${opt.label}`).row();
             }
 
             pendingAnswers.set(answerId, {
@@ -827,12 +814,9 @@ export function createWorker(
             for (let i = 0; i < chunks.length; i++) {
               try {
                 if (i === 0 && draftMsgId) {
-                  await bot.api.editMessageText(
-                    chatId,
-                    draftMsgId,
-                    chunks[i],
-                    { parse_mode: "HTML" }
-                  );
+                  await bot.api.editMessageText(chatId, draftMsgId, chunks[i], {
+                    parse_mode: "HTML",
+                  });
                 } else {
                   await bot.api.sendMessage(chatId, chunks[i], {
                     parse_mode: "HTML",
@@ -867,20 +851,19 @@ export function createWorker(
               `retry:${chatId}`
             );
 
-            const msg = draftMsgId
-              ? await bot.api
-                  .editMessageText(
-                    chatId,
-                    draftMsgId,
-                    `❌ Error: ${error}`,
-                    { reply_markup: keyboard }
-                  )
-                  .catch(() => null)
-              : await bot.api
-                  .sendMessage(chatId, `❌ Error: ${error}`, {
-                    reply_markup: keyboard,
-                  })
-                  .catch(() => null);
+            if (draftMsgId) {
+              await bot.api
+                .editMessageText(chatId, draftMsgId, `❌ Error: ${error}`, {
+                  reply_markup: keyboard,
+                })
+                .catch(() => null);
+            } else {
+              await bot.api
+                .sendMessage(chatId, `❌ Error: ${error}`, {
+                  reply_markup: keyboard,
+                })
+                .catch(() => null);
+            }
           },
 
           onSessionReset: async (newSessionId) => {

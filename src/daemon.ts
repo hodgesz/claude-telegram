@@ -4,10 +4,7 @@ import { DATA_DIR, config, ensureDataDir } from "./config.js";
 import { loadBots, addBot, removeBot, type BotConfig } from "./store.js";
 import { ClaudeBridge } from "./claude.js";
 import { TunnelManager } from "./tunnel.js";
-import {
-  ScheduleManager,
-  loadSchedules,
-} from "./scheduler.js";
+import { ScheduleManager, loadSchedules } from "./scheduler.js";
 import { createManager, MANAGER_COMMANDS } from "./manager.js";
 import { createWorker, WORKER_COMMANDS } from "./worker.js";
 import { claudeToTelegram, splitMessage } from "./formatter.js";
@@ -31,9 +28,7 @@ let scheduleManager: ScheduleManager;
 let healthCheckTimer: ReturnType<typeof setInterval>;
 
 async function startWorker(botConfig: BotConfig): Promise<void> {
-  logStatus(
-    `Starting worker @${botConfig.username} → ${botConfig.workingDir}`
-  );
+  logStatus(`Starting worker @${botConfig.username} → ${botConfig.workingDir}`);
 
   const bridge = new ClaudeBridge(
     botConfig.id,
@@ -180,7 +175,7 @@ async function shutdown(): Promise<void> {
   clearInterval(healthCheckTimer);
   scheduleManager.stop();
 
-  for (const [botId, worker] of activeWorkers) {
+  for (const [, worker] of activeWorkers) {
     worker.bridge.abortAll();
     await worker.tunnelManager.closeAll();
     try {
@@ -211,46 +206,50 @@ async function main(): Promise<void> {
   fs.writeFileSync(PID_FILE, String(process.pid), { mode: 0o600 });
 
   // Step 3: Create schedule manager
-  scheduleManager = new ScheduleManager(async (botId, chatId, prompt, schedId) => {
-    const worker = activeWorkers.get(botId);
-    if (!worker) {
-      logError(`Schedule ${schedId}: worker ${botId} not found`);
-      return;
-    }
+  scheduleManager = new ScheduleManager(
+    async (botId, chatId, prompt, schedId) => {
+      const worker = activeWorkers.get(botId);
+      if (!worker) {
+        logError(`Schedule ${schedId}: worker ${botId} not found`);
+        return;
+      }
 
-    worker.bridge.clearSession(chatId);
+      worker.bridge.clearSession(chatId);
 
-    try {
-      await worker.bridge.sendMessage(
-        chatId,
-        prompt,
-        {
-          onResult: async (result) => {
-            const html = claudeToTelegram(result.text);
-            const chunks = splitMessage(html);
-            for (const chunk of chunks) {
-              try {
-                await worker.bot.api.sendMessage(chatId, chunk, {
-                  parse_mode: "HTML",
-                });
-              } catch {
-                await worker.bot.api.sendMessage(chatId, chunk).catch(() => {});
+      try {
+        await worker.bridge.sendMessage(
+          chatId,
+          prompt,
+          {
+            onResult: async (result) => {
+              const html = claudeToTelegram(result.text);
+              const chunks = splitMessage(html);
+              for (const chunk of chunks) {
+                try {
+                  await worker.bot.api.sendMessage(chatId, chunk, {
+                    parse_mode: "HTML",
+                  });
+                } catch {
+                  await worker.bot.api
+                    .sendMessage(chatId, chunk)
+                    .catch(() => {});
+                }
               }
-            }
+            },
+            onError: async (error) => {
+              await worker.bot.api
+                .sendMessage(chatId, `⚠️ Scheduled task error: ${error}`)
+                .catch(() => {});
+            },
           },
-          onError: async (error) => {
-            await worker.bot.api
-              .sendMessage(chatId, `⚠️ Scheduled task error: ${error}`)
-              .catch(() => {});
-          },
-        },
-        "bypassPermissions",
-        25
-      );
-    } catch (err) {
-      logError(`Schedule ${schedId} execution failed: ${err}`);
+          "bypassPermissions",
+          25
+        );
+      } catch (err) {
+        logError(`Schedule ${schedId} execution failed: ${err}`);
+      }
     }
-  });
+  );
 
   // Step 4: Create manager bot
   const managerBot = createManager(
@@ -272,9 +271,7 @@ async function main(): Promise<void> {
     try {
       await startWorker(botConfig);
     } catch (err) {
-      logError(
-        `Failed to start worker @${botConfig.username}: ${err}`
-      );
+      logError(`Failed to start worker @${botConfig.username}: ${err}`);
     }
   }
 
@@ -316,7 +313,9 @@ async function startManagerPolling(managerBot: any): Promise<void> {
   managerBot.start({
     drop_pending_updates: true,
     onStart: () => {
-      logStatus(`Manager bot ready (@${managerBot.botInfo.username}). Send /help in Telegram.`);
+      logStatus(
+        `Manager bot ready (@${managerBot.botInfo.username}). Send /help in Telegram.`
+      );
     },
   });
 }

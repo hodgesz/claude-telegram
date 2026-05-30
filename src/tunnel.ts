@@ -36,9 +36,7 @@ export class TunnelManager {
     try {
       ngrok = await import("@ngrok/ngrok");
     } catch {
-      throw new Error(
-        "ngrok is not installed. Run: npm install @ngrok/ngrok"
-      );
+      throw new Error("ngrok is not installed. Run: npm install @ngrok/ngrok");
     }
 
     const listener = await ngrok.forward({

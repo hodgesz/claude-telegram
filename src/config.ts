@@ -27,26 +27,20 @@ function resolveConfig(): Config {
 
   // Config file takes priority over env vars (env may have stale values
   // from shell profile that conflict with the setup wizard's choices)
-  const token =
-    file.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN ?? "";
-  const ownerId =
-    file.TELEGRAM_OWNER_ID ?? process.env.TELEGRAM_OWNER_ID ?? "";
+  const token = file.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN ?? "";
+  const ownerId = file.TELEGRAM_OWNER_ID ?? process.env.TELEGRAM_OWNER_ID ?? "";
   const ngrokToken =
     file.NGROK_AUTH_TOKEN ?? process.env.NGROK_AUTH_TOKEN ?? undefined;
   const anthropicKey =
     file.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_API_KEY ?? undefined;
 
   if (!token) {
-    console.error(
-      "TELEGRAM_BOT_TOKEN not set. Run: claude-telegram setup"
-    );
+    console.error("TELEGRAM_BOT_TOKEN not set. Run: claude-telegram setup");
     process.exit(1);
   }
 
   if (!ownerId) {
-    console.error(
-      "TELEGRAM_OWNER_ID not set. Run: claude-telegram setup"
-    );
+    console.error("TELEGRAM_OWNER_ID not set. Run: claude-telegram setup");
     process.exit(1);
   }
 

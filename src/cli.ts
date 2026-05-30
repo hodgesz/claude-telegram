@@ -85,7 +85,11 @@ function rotateLog(): void {
   }
 }
 
-function readTailLines(filePath: string, n: number, maxBytes = 32768): string[] {
+function readTailLines(
+  filePath: string,
+  n: number,
+  maxBytes = 32768
+): string[] {
   try {
     const stat = fs.statSync(filePath);
     const fd = fs.openSync(filePath, "r");
@@ -117,9 +121,7 @@ async function cmdSetup(): Promise<void> {
   console.log("\n🔧 Claude Telegram Setup\n");
 
   // Step 1: Bot token
-  const token = await ask(
-    "Manager bot token (from @BotFather): "
-  );
+  const token = await ask("Manager bot token (from @BotFather): ");
   if (!token.match(/^\d+:[A-Za-z0-9_-]+$/)) {
     console.error("Invalid bot token format.");
     rl.close();
@@ -266,8 +268,12 @@ function cmdStop(): void {
     try {
       execSync(`launchctl unload ${PLIST_PATH}`, { stdio: "pipe" });
       console.log("✓ Daemon stopped via launchd.");
-      // Clean up PID file
-      try { fs.rmSync(PID_FILE); } catch {}
+      // Clean up PID file (ignore if it's already gone)
+      try {
+        fs.rmSync(PID_FILE);
+      } catch {
+        // no-op
+      }
       return;
     } catch {
       // Fall through
@@ -502,7 +508,12 @@ Commands:
   install-service    Install as system service (macOS launchd / Linux systemd)
   uninstall-service  Remove system service
 `);
-    if (command && command !== "help" && command !== "--help" && command !== "-h") {
+    if (
+      command &&
+      command !== "help" &&
+      command !== "--help" &&
+      command !== "-h"
+    ) {
       console.error(`Unknown command: ${command}`);
       process.exit(1);
     }
