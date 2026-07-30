@@ -15,6 +15,9 @@ natural-language cron scheduling.
 
 - Install: `npm install` (CI uses `npm ci`). Dev: `npm run dev` (`tsx src/cli.ts`).
 - Lint: `npm run lint` (`eslint .`). Format check: `npm run format:check`.
+- **`prettier --check .` includes markdown**, so this file and the README are CI-gated like the code.
+  It rewrites `*em*` to `_em_` and will dedent a list item whose wrapped line starts a code span, so
+  keep an inline `` `code` `` on one line. Run `npx prettier --write` on any doc you edit.
 - Typecheck: `npm run typecheck` (`tsc --noEmit -p tsconfig.typecheck.json`).
 - Test: `npm test` (`vitest run --passWithNoTests`).
 - **There is a build step**: `npm run build` (`tsc` → `dist/`). `bin.claude-telegram` points at
@@ -57,16 +60,16 @@ natural-language cron scheduling.
   `ctx.from?.id` to the configured owner is the only thing between a stranger and arbitrary code
   execution in a project directory. Any change that weakens, reorders or bypasses that check is the
   single highest-severity defect possible in this repo — treat it that way.
-- **Auto-approval is the documented product behaviour, not a slip.** `permissionMode:
-  "bypassPermissions"` appears as a default argument in several call sites; the interactive path is the
-  `canUseTool` callback resolving against a Telegram inline keyboard. Note that `canUseTool` falls
-  through to *allow* when no approval callback is wired — worth flagging if a new caller forgets to
-  pass one.
+- **Auto-approval is the documented product behaviour, not a slip.**
+  `permissionMode: "bypassPermissions"` appears as a default argument in several call sites; the
+  interactive path is the `canUseTool` callback resolving against a Telegram inline keyboard. Note
+  that `canUseTool` falls through to _allow_ when no approval callback is wired — worth flagging if
+  a new caller forgets to pass one.
 - **Secrets live outside the repo** in `~/.clautel/`, with the directory created `0o700` and files
   written `0o600`. A change that widens those modes or moves state into the repo is a regression.
 - **Worker-bot tokens arrive in a chat message** (`/add <token> <path>`), so they transit Telegram and
   persist in message history. That is inherent to the design; what matters on review is that nothing
-  *logs* them. The logging helpers take free-form strings, so any new log line interpolating a token
+  _logs_ them. The logging helpers take free-form strings, so any new log line interpolating a token
   or config object would leak it to `~/.clautel/app.log`.
 - The `workingDir` from `/add` does not appear to be path-validated. Worth flagging on any change
   near it.
